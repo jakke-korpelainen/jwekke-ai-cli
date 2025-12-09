@@ -1,8 +1,6 @@
-use std::io::Write;
-
-use tokio_stream::StreamExt;
-
 use crate::models::ChatCompletionChunk;
+use std::{io::Write, path::PathBuf, process::Command};
+use tokio_stream::StreamExt;
 
 const STREAM_EOS: &'static str = "[DONE]";
 
@@ -38,8 +36,16 @@ pub fn deserialize_sse_events(chunk: &str) -> Vec<String> {
 
 pub async fn parse_mistral_stream(
     response: reqwest::Response,
+    (file_path, mut file): (PathBuf, std::fs::File),
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut stdout = std::io::stdout();
+    // Start the glow process to read from the temporary file
+    let mut child = Command::new("glow")
+        .arg(
+            file_path
+                .to_str()
+                .expect("Failed to convert path to string"),
+        )
+        .spawn()?;
     let mut stream = response.bytes_stream();
 
     while let Some(chunk) = stream.next().await {
@@ -52,8 +58,9 @@ pub async fn parse_mistral_stream(
                 Ok(chunk) => {
                     if let Some(content) = &chunk.choices[0].delta.content {
                         let value = content.to_string();
-                        print!("{}", value);
-                        stdout.flush()?;
+                        // Write the content to the file
+                        file.write_all(value.as_bytes())?;
+                        file.flush()?;
                     }
                 }
                 Err(e) => {
@@ -62,6 +69,10 @@ pub async fn parse_mistral_stream(
             }
         }
     }
+
+    // Ensure the child process is properly terminated
+    drop(file); // Close stdin to signal EOF to the child process
+    let _ = child.wait()?;
 
     Ok(())
 }

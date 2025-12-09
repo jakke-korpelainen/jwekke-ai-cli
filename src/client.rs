@@ -1,12 +1,14 @@
 use reqwest::Client;
 
-use crate::stream::parse_mistral_stream;
+use crate::{file::create_file_cache, stream::parse_mistral_stream};
 
 const API_URL: &'static str = "https://api.mistral.ai/v1/chat/completions";
 const API_MODEL: &'static str = "mistral-tiny";
 
 pub async fn call_mistral_completions(prompt: String) -> Result<(), Box<dyn std::error::Error>> {
     let mistral_api_key = std::env::var("MISTRAL_API_KEY").expect("MISTRAL_API_KEY not set");
+
+    let cache = create_file_cache();
 
     let client = Client::new();
 
@@ -29,7 +31,7 @@ pub async fn call_mistral_completions(prompt: String) -> Result<(), Box<dyn std:
         return Ok(());
     }
 
-    parse_mistral_stream(response)
+    parse_mistral_stream(response, cache)
         .await
         .expect("Result stream chunking failed");
 

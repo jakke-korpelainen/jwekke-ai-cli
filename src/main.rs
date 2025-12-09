@@ -2,6 +2,7 @@ use crate::client::call_mistral_completions;
 use std::env;
 
 pub mod client;
+pub mod file;
 pub mod models;
 pub mod stream;
 
@@ -13,6 +14,11 @@ async fn main() {
         std::process::exit(1);
     }
     let prompt = &args[1];
+
+    // Remove the file if it exists to ensure it is recreated
+    //    if file_path.exists() {
+    //       std::fs::remove_file(&file_path)?;
+    //  }
 
     if let Err(e) = call_mistral_completions(prompt.to_string()).await {
         eprintln!("Error: {}", e);
