@@ -1,17 +1,57 @@
 use crate::loading::spawn_spinner;
-use crate::{file::open_file_cache, stream::parse_mistral_stream};
+use crate::models::{MistralModelCard, MistralModelResponse};
+use crate::{config, file, stream};
 use reqwest::Client;
+use std::env;
 use tokio::sync::watch::{self};
 
 const API_URL: &'static str = "https://api.mistral.ai/v1/chat/completions";
-const API_MODEL: &'static str = "mistral-tiny";
+const DEFAULT_API_MODEL: &'static str = "mistral-tiny";
+
+pub async fn list_mistral_models() -> Result<Vec<MistralModelCard>, Box<dyn std::error::Error>> {
+    let mistral_api_key = env::var("MISTRAL_API_KEY").expect("MISTRAL_API_KEY not set");
+    let client = Client::new();
+
+    let response = match client
+        .get("https://api.mistral.ai/v1/models")
+        .header("Authorization", format!("Bearer {}", mistral_api_key))
+        .send()
+        .await
+    {
+        Ok(response) => {
+            if !response.status().is_success() {
+                eprintln!("Client Error: {}", response.status());
+            }
+
+            response
+                .json::<MistralModelResponse>()
+                .await
+                .expect("Failed to read json")
+                .data
+        }
+        Err(e) => {
+            eprint!("Request failed for Mistral models: {}", e);
+            return Err(e.into());
+        }
+    };
+
+    // filter only models with chat completion
+
+    Ok(response
+        .into_iter()
+        .filter(|model| model.capabilities.completion_chat == true)
+        .collect())
+}
 
 pub async fn call_mistral_completions(prompt: String) -> Result<(), Box<dyn std::error::Error>> {
-    let mistral_api_key = std::env::var("MISTRAL_API_KEY").expect("MISTRAL_API_KEY not set");
+    let mistral_model = config::get_model_name()
+        .await
+        .unwrap_or_else(|_| DEFAULT_API_MODEL.to_string());
+    let mistral_api_key = env::var("MISTRAL_API_KEY").expect("MISTRAL_API_KEY not set");
     let client = Client::new();
 
     let request_body = serde_json::json!({
-        "model": API_MODEL,
+        "model": mistral_model,
         "messages": [{"role": "user", "content": prompt}],
         "stream": true
     });
@@ -49,8 +89,8 @@ pub async fn call_mistral_completions(prompt: String) -> Result<(), Box<dyn std:
     // Ensure the spinner task completes
     spinner_task.await?;
 
-    let cache = open_file_cache().await;
-    parse_mistral_stream(response, cache)
+    let cache = file::open_cache_file().await;
+    stream::parse_mistral_stream(response, cache)
         .await
         .expect("Result stream chunking failed");
 
