@@ -102,7 +102,7 @@ pub async fn create_cache_file() -> (PathBuf, File) {
 
 pub async fn create_config_file() -> (PathBuf, File) {
     let config_file_path = get_config_file_path();
-    match create_file(config_file_path, false).await {
+    match create_file(config_file_path, true).await {
         Ok(file) => file,
         Err(e) => panic!("Failed to create config file: {}", e),
     }

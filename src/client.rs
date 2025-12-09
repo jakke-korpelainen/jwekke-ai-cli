@@ -21,6 +21,7 @@ pub async fn list_mistral_models() -> Result<Vec<MistralModelCard>, Box<dyn std:
         Ok(response) => {
             if !response.status().is_success() {
                 eprintln!("Client Error: {}", response.status());
+                panic!("{}", response.status());
             }
 
             response
@@ -31,7 +32,7 @@ pub async fn list_mistral_models() -> Result<Vec<MistralModelCard>, Box<dyn std:
         }
         Err(e) => {
             eprint!("Request failed for Mistral models: {}", e);
-            return Err(e.into());
+            panic!("{}", e);
         }
     };
 
@@ -71,10 +72,8 @@ pub async fn call_mistral_completions(prompt: String) -> Result<(), Box<dyn std:
         .await
     {
         Ok(response) => {
-            if !response.status().is_success() {
-                eprintln!("Client Error: {}", response.status());
-            }
-
+            let status = response.status();
+            println!("Response Status: {}", status);
             response
         }
         Err(e) => {

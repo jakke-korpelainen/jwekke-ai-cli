@@ -22,7 +22,8 @@ pub async fn get_model_name() -> Result<String, Box<dyn std::error::Error>> {
 pub async fn save_model_name(model_name: String) -> Result<(), Box<dyn std::error::Error>> {
     let (_, mut file) = file::create_config_file().await;
 
-    file.write_all(format!("MISTRAL_MODEL={}", model_name).as_bytes())
+    _ = file.flush().await; // this is for nouw our only config
+    file.write_all(format!("MISTRAL_MODEL=\"{}\"", model_name).as_bytes())
         .await?;
 
     Ok(())

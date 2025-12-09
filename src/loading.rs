@@ -22,7 +22,6 @@ pub fn spawn_spinner(rx: Receiver<bool>, label: String) -> tokio::task::JoinHand
         }
 
         let _ = stdout.write_all(b"\r").await;
-        let _ = stdout.flush().await;
     });
     spinner_task
 }

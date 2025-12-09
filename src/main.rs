@@ -36,7 +36,7 @@ async fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Config => match ui::prompt_user_for_selection().await {
+        Commands::Config => match ui::select_mistral_model().await {
             Ok(model) => println!("Model switched to {}", model),
             Err(e) => eprintln!("Model switch error: {}", e),
         },
@@ -97,8 +97,7 @@ async fn main() {
                 .expect("Failed to wait for glow process");
 
             // Clear the console and display the output
-            print!("\x1B[2J\x1B[1;1H"); // ANSI escape codes to clear screen
-
+            // print!("\x1B[2J\x1B[1;1H"); // ANSI escape codes to clear screen
             stdout()
                 .write_all(&output.stdout)
                 .await
