@@ -1,5 +1,9 @@
-use std::io::Write;
-use std::{fs::OpenOptions, path::PathBuf};
+use std::path::PathBuf;
+
+use tokio::{
+    fs::{File, OpenOptions, remove_file},
+    io::AsyncWriteExt,
+};
 
 const CACHE_FILE_NAME: &str = "cache.txt";
 
@@ -13,7 +17,7 @@ pub fn get_file_cache_path() -> PathBuf {
     dir_path.join(CACHE_FILE_NAME)
 }
 
-pub fn open_file_cache() -> (PathBuf, std::fs::File) {
+pub async fn open_file_cache() -> (PathBuf, File) {
     let file_path = get_file_cache_path();
 
     // Open the file in append mode
@@ -21,16 +25,18 @@ pub fn open_file_cache() -> (PathBuf, std::fs::File) {
         .append(true)
         .create(true)
         .open(&file_path)
+        .await
         .expect("Can't open file");
 
     (file_path, file)
 }
 
-pub fn create_file_cache() -> (PathBuf, std::fs::File) {
+pub async fn create_file_cache() -> (PathBuf, File) {
     let file_path = get_file_cache_path();
     if file_path.exists() {
-        eprint!("{}", file_path.to_string_lossy());
-        std::fs::remove_file(&file_path).expect("Failed to remove existing cache file");
+        remove_file(&file_path)
+            .await
+            .expect("Failed to remove existing cache file");
     }
 
     // Create the file if it doesn't exist
@@ -38,10 +44,10 @@ pub fn create_file_cache() -> (PathBuf, std::fs::File) {
         .create(true)
         .write(true)
         .open(&file_path)
+        .await
         .expect("Can't write to file");
 
-    // Write the header to the file
-    writeln!(file, "").expect("Can't write to file");
+    file.write(b"").await.expect("Failed to write to file");
 
     (file_path, file)
 }
