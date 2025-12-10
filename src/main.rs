@@ -87,10 +87,10 @@ async fn main() {
             display_task.await.unwrap();
 
             // // Restore the terminal
-            // if let Err(e) = ui::restore_terminal() {
-            //     eprintln!("Failed to restore terminal: {}", e);
-            //     std::process::exit(1);
-            // }
+            if let Err(e) = ui::restore_terminal() {
+                eprintln!("Failed to restore terminal: {}", e);
+                std::process::exit(1);
+            }
         }
     }
 }
