@@ -94,15 +94,3 @@ Outputs interactive model selection based from `api.mistral.ai/v1/models`.
 v mistral-large-pixtral-2411
 [↑↓ to move, enter to select, type to filter]
 ```
-
-## Example
-
-```sh
-mistral "What is the meaning of life, 50 characters with markdown, first word bolded."
-```
-
-## Output
-
-```markdown
-**The** meaning of life is a profound question that has been debated for centuries. In 50 characters: "Life's purpose is to find happiness and meaning."
-```
