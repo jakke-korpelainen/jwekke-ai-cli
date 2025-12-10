@@ -11,5 +11,8 @@ reqwest = { version = "0.11", features = ["json", "stream"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
-tokio-stream = "0.1.17"
+tokio-stream = {version = "0.1.17", features = ["io-util"]}
 simd-json = "0.17.0"
+futures = "0.3.31"
+bytes = "1.11.0"
+regex = "1.12.2"

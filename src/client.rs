@@ -1,9 +1,10 @@
 use crate::loading::spawn_spinner;
 use crate::models::{MistralModelCard, MistralModelResponse};
-use crate::{config, file, stream};
+use crate::{config, stream};
 use reqwest::Client;
 use std::env;
-use tokio::sync::watch::{self};
+use std::io::Write;
+use tokio::sync::{mpsc, watch};
 
 const API_URL: &'static str = "https://api.mistral.ai/v1/chat/completions";
 const DEFAULT_API_MODEL: &'static str = "mistral-tiny";
@@ -88,10 +89,23 @@ pub async fn call_mistral_completions(prompt: String) -> Result<(), Box<dyn std:
     // Ensure the spinner task completes
     spinner_task.await?;
 
-    let cache = file::open_cache_file().await;
-    stream::parse_mistral_stream(response, cache)
+    // Create a channel for real-time updates
+    let (sender, mut receiver) = mpsc::channel(100);
+
+    // Spawn a task to handle real-time updates
+    let display_task = tokio::spawn(async move {
+        while let Some(chunk) = receiver.recv().await {
+            print!("{}", chunk);
+            std::io::stdout().flush().unwrap();
+        }
+    });
+
+    stream::parse_mistral_stream(Box::pin(response.bytes_stream()), sender)
         .await
         .expect("Result stream chunking failed");
+
+    // Wait for the display task to complete
+    display_task.await.unwrap();
 
     Ok(())
 }

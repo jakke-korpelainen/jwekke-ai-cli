@@ -15,8 +15,8 @@ pub async fn get_model_name() -> Result<String, Box<dyn std::error::Error>> {
         .collect::<Vec<String>>();
 
     let model_name = model_config[0].clone();
-
-    Ok(model_name.to_string())
+    let stripped_model_name = model_name.replace("\"", "");
+    Ok(stripped_model_name)
 }
 
 pub async fn save_model_name(model_name: String) -> Result<(), Box<dyn std::error::Error>> {
