@@ -1,4 +1,4 @@
-use crate::{client::list_mistral_models, config::save_model_name, logger::Logger};
+use crate::{client::list_mistral_models, config::save_model_name, logger::Logger, ui};
 use crossterm::{
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
@@ -21,8 +21,8 @@ use tokio::sync::mpsc;
 /// A `Result` containing the selected model's name or an error.
 pub async fn select_mistral_model(logger: &Logger) -> Result<String, Box<dyn std::error::Error>> {
     let models = list_mistral_models(&logger).await.map_err(|e| {
-        eprintln!("Failed to load models: {}", e);
-        e
+        _ = ui::restore_terminal();
+        panic!("Failed to load models: {}", e);
     })?;
 
     let options = models

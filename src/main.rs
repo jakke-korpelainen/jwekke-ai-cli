@@ -45,19 +45,19 @@ async fn main() {
         },
         Commands::Run { prompt } => {
             let escaped_prompt = prompt.replace("\"", "");
-
             let model_name = match config::get_model_name().await {
                 Ok(model_name) => model_name,
                 Err(e) => {
+                    _ = ui::restore_terminal();
                     panic!("Model name error: {}", e);
                 }
             };
-            println!("Using model: {}", model_name);
 
             // Initialize the terminal for the UI
             let mut terminal = match ui::setup_terminal() {
                 Ok(terminal) => terminal,
                 Err(e) => {
+                    _ = ui::restore_terminal();
                     panic!("Failed to setup terminal: {}", e);
                 }
             };
@@ -69,10 +69,10 @@ async fn main() {
             let prompt_clone = escaped_prompt.clone();
             let logger_clone = logger.clone();
             let display_task = tokio::spawn(async move {
-                if let Err(e) =
+                if let Err(_) =
                     client::call_mistral_completions(prompt_clone, sender, &logger_clone).await
                 {
-                    eprintln!("Mistral completions error: {}", e);
+                    // TODO: Handle error
                 }
             });
 
@@ -80,8 +80,7 @@ async fn main() {
             if let Err(e) =
                 ui::render_ui(&mut terminal, &logger, model_name, escaped_prompt, receiver).await
             {
-                eprintln!("Failed to render UI: {}", e);
-                std::process::exit(1);
+                logger.log_error(format!("{}", e)).await;
             }
 
             // Wait for the display task to complete
