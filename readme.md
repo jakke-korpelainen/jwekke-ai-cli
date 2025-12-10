@@ -55,6 +55,12 @@ jwekke-ai-cli --help
 ai --help
 ```
 
+## Prompt
+
+```sh
+ai run "Where do you store ketchup in a finnish household?"
+```
+
 ## Config
 
 The config file is created into `~/.config/jwekke-ai-cli/config.jwek`.
