@@ -12,8 +12,7 @@ pub fn get_cli_config_dir() -> PathBuf {
     match std::fs::create_dir_all(&dir_path) {
         Ok(_) => dir_path,
         Err(e) => {
-            eprintln!("Failed to create config directory: {}", e);
-            std::process::exit(1);
+            panic!("Failed to create config directory: {}", e);
         }
     }
 }
@@ -34,8 +33,7 @@ pub async fn open_config_file() -> (PathBuf, File) {
     match open_file(config_file_path).await {
         Ok((file_path, file)) => (file_path, file),
         Err(e) => {
-            eprintln!("Failed to open config file: {}", e);
-            std::process::exit(1);
+            panic!("Failed to open config file: {}", e);
         }
     }
 }
@@ -46,8 +44,7 @@ pub async fn open_cache_file() -> (PathBuf, File) {
     match open_file(cache_file_path).await {
         Ok((file_path, file)) => (file_path, file),
         Err(e) => {
-            eprintln!("Failed to open cache file: {}", e);
-            std::process::exit(1);
+            panic!("Failed to open cache file: {}", e);
         }
     }
 }
@@ -59,13 +56,9 @@ pub async fn open_file(file_path: PathBuf) -> Result<(PathBuf, File), std::io::E
         .open(&file_path)
         .await
     {
-        Ok(file) => {
-            println!("Successfully opened file: {:?}", file_path);
-            Ok((file_path, file))
-        }
+        Ok(file) => Ok((file_path, file)),
         Err(e) => {
-            eprintln!("Failed to open file: {:?}, error: {}", file_path, e);
-            Err(e)
+            panic!("Failed to open file: {:?}, error: {}", file_path, e);
         }
     }
 }
@@ -81,13 +74,9 @@ pub async fn create_file(
         .open(&file_path)
         .await
     {
-        Ok(file) => {
-            println!("Successfully created file: {:?}", file_path);
-            Ok((file_path, file))
-        }
+        Ok(file) => Ok((file_path, file)),
         Err(e) => {
-            eprintln!("Failed to create file: {:?}, error: {}", file_path, e);
-            Err(e)
+            panic!("Failed to create file: {:?}, error: {}", file_path, e);
         }
     }
 }

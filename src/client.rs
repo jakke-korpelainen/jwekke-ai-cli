@@ -1,15 +1,16 @@
-use crate::loading::spawn_spinner;
 use crate::models::{MistralModelCard, MistralModelResponse};
-use crate::{config, stream};
+use crate::{config, logger::Logger, stream};
 use reqwest::Client;
 use std::env;
-use std::io::Write;
-use tokio::sync::{mpsc, watch};
+
+use tokio::sync::mpsc;
 
 const API_URL: &'static str = "https://api.mistral.ai/v1/chat/completions";
 const DEFAULT_API_MODEL: &'static str = "mistral-tiny";
 
-pub async fn list_mistral_models() -> Result<Vec<MistralModelCard>, Box<dyn std::error::Error>> {
+pub async fn list_mistral_models(
+    logger: &Logger,
+) -> Result<Vec<MistralModelCard>, Box<dyn std::error::Error>> {
     let mistral_api_key = env::var("MISTRAL_API_KEY").expect("MISTRAL_API_KEY not set");
     let client = Client::new();
 
@@ -21,19 +22,26 @@ pub async fn list_mistral_models() -> Result<Vec<MistralModelCard>, Box<dyn std:
     {
         Ok(response) => {
             if !response.status().is_success() {
-                eprintln!("Client Error: {}", response.status());
-                panic!("{}", response.status());
+                logger
+                    .log_error(format!("Client Error: {}", response.status()))
+                    .await;
+
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Client Error: {}", response.status()),
+                )));
             }
 
             response
                 .json::<MistralModelResponse>()
                 .await
-                .expect("Failed to read json")
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?
                 .data
         }
         Err(e) => {
-            eprint!("Request failed for Mistral models: {}", e);
-            panic!("{}", e);
+            logger.log_error(format!("Client Error: {}", e)).await;
+
+            return Err(Box::new(e));
         }
     };
 
@@ -45,7 +53,11 @@ pub async fn list_mistral_models() -> Result<Vec<MistralModelCard>, Box<dyn std:
         .collect())
 }
 
-pub async fn call_mistral_completions(prompt: String) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn call_mistral_completions(
+    prompt: String,
+    sender: mpsc::Sender<String>,
+    logger: &Logger,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mistral_model = config::get_model_name()
         .await
         .unwrap_or_else(|_| DEFAULT_API_MODEL.to_string());
@@ -58,12 +70,6 @@ pub async fn call_mistral_completions(prompt: String) -> Result<(), Box<dyn std:
         "stream": true
     });
 
-    // Create a channel to control the spinner
-    let (tx, rx) = watch::channel(true);
-
-    // Spawn the spinner as a Tokio task
-    let spinner_task = spawn_spinner(rx, "Connecting to Mistral API".to_string());
-
     let response = match client
         .post(API_URL)
         .header("Content-Type", "application/json")
@@ -73,39 +79,23 @@ pub async fn call_mistral_completions(prompt: String) -> Result<(), Box<dyn std:
         .await
     {
         Ok(response) => {
-            let status = response.status();
-            println!("Response Status: {}", status);
+            if !response.status().is_success() {
+                logger
+                    .log_error(format!("Client Error: {}", response.status()))
+                    .await;
+            }
+
             response
         }
         Err(e) => {
-            eprintln!("Error sending request: {}", e);
+            logger.log_error(format!("Client Error: {}", e)).await;
             return Err(e.into());
         }
     };
 
-    // Stop the spinner
-    tx.send(false)?;
-
-    // Ensure the spinner task completes
-    spinner_task.await?;
-
-    // Create a channel for real-time updates
-    let (sender, mut receiver) = mpsc::channel(100);
-
-    // Spawn a task to handle real-time updates
-    let display_task = tokio::spawn(async move {
-        while let Some(chunk) = receiver.recv().await {
-            print!("{}", chunk);
-            std::io::stdout().flush().unwrap();
-        }
-    });
-
-    stream::parse_mistral_stream(Box::pin(response.bytes_stream()), sender)
+    stream::parse_mistral_stream(Box::pin(response.bytes_stream()), sender, &logger)
         .await
         .expect("Result stream chunking failed");
-
-    // Wait for the display task to complete
-    display_task.await.unwrap();
 
     Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::models::ChatCompletionChunk;
+use crate::{logger::Logger, models::ChatCompletionChunk};
 use bytes::Bytes;
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt;
@@ -40,10 +40,9 @@ impl std::fmt::Display for StreamState {
 pub async fn parse_mistral_stream(
     mut stream: futures::stream::BoxStream<'static, Result<Bytes, reqwest::Error>>,
     sender: mpsc::Sender<String>,
+    logger: &Logger,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let mut parsed_content = String::new();
-    println!("");
-
     let mut buffer = Vec::new();
     let mut stream_state = StreamState::FirstChunk;
 
@@ -74,11 +73,17 @@ pub async fn parse_mistral_stream(
                     let incoming_chunk_text = String::from_utf8_lossy(&cleaned_bytes);
                     match stream_state {
                         StreamState::FirstChunk if !incoming_chunk_text.starts_with("{") => {
-                            //eprintln!("Token stream starts broken, can't stitch");
+                            logger
+                                .log_error(format!("Token stream starts broken, can't stitch"))
+                                .await;
                         }
                         StreamState::PartialChunk if current_buffer_text.contains("}") => {
-                            //eprintln!("Can't stitch, buffer already contains a complete chunk\n");
-                            //eprintln!("{}", current_buffer_text);
+                            logger
+                                .log_error(format!(
+                                    "Can't stitch, buffer already contains a complete chunk\n{}",
+                                    current_buffer_text
+                                ))
+                                .await;
                             panic!();
                         }
                         StreamState::PartialChunk | StreamState::SubsequentChunk
@@ -92,9 +97,14 @@ pub async fn parse_mistral_stream(
                             continue;
                         }
                         _ => {
-                            //println!("State: {}", stream_state);
-                            //println!("Broken buffer: {}", incoming_chunk_text.escape_debug());
-                            //eprintln!("^----- Error {} occurred while parsing buffer\n", e);
+                            logger
+                                .log_error(format!(
+                                    "State: {}\nBroken buffer: {}\nError: {}",
+                                    stream_state,
+                                    incoming_chunk_text.escape_debug(),
+                                    e
+                                ))
+                                .await;
                         }
                     }
                 }
@@ -115,6 +125,7 @@ mod tests {
     ) -> Result<String, Box<dyn std::error::Error>> {
         let stream = futures::stream::iter(specimen.into_iter().map(|s| Ok(Bytes::from(s))));
         let (sender, mut receiver) = mpsc::channel(100);
+        let logger = Logger::new();
 
         // Spawn a task to consume the channel
         let _ = tokio::spawn(async move {
@@ -123,7 +134,7 @@ mod tests {
             }
         });
 
-        parse_mistral_stream(Box::pin(stream), sender).await
+        parse_mistral_stream(Box::pin(stream), sender, &logger).await
     }
 
     #[tokio::test]
