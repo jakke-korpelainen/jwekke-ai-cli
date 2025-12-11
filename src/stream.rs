@@ -48,6 +48,7 @@ pub async fn parse_mistral_stream(
 
     while let Some(chunk) = stream.next().await {
         if let Ok(bytes) = chunk {
+            logger.write_stream_log(bytes.clone()).await;
             let cleaned_bytes = clean_byte_chunk(&bytes);
             if cleaned_bytes.is_empty() {
                 continue;
@@ -67,6 +68,11 @@ pub async fn parse_mistral_stream(
                             .expect("Failed to send chunk");
                     }
                     buffer.clear();
+
+                    // stop if finished
+                    if value.choices[0].finish_reason.is_some() {
+                        break;
+                    }
                 }
                 Err(e) => {
                     let current_buffer_text = String::from_utf8_lossy(&buffer);
@@ -113,6 +119,8 @@ pub async fn parse_mistral_stream(
         stream_state = StreamState::SubsequentChunk;
     }
 
+    drop(sender);
+
     Ok(parsed_content)
 }
 
@@ -125,7 +133,7 @@ mod tests {
     ) -> Result<String, Box<dyn std::error::Error>> {
         let stream = futures::stream::iter(specimen.into_iter().map(|s| Ok(Bytes::from(s))));
         let (sender, mut receiver) = mpsc::channel(100);
-        let logger = Logger::new();
+        let logger = Logger::new().await;
 
         // Spawn a task to consume the channel
         let _ = tokio::spawn(async move {

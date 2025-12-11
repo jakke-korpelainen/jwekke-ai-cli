@@ -31,7 +31,7 @@ enum Commands {
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    let logger = Logger::new();
+    let logger = Logger::new().await;
 
     match &cli.command {
         Commands::Config => match ui::select_mistral_model(&logger).await {

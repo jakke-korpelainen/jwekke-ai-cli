@@ -79,6 +79,8 @@ pub async fn render_ui(
     let mut token_stream = String::new();
     let mut should_quit = false;
     let mut scroll_offset = 0;
+    let mut error_scroll_offset = 0;
+    let mut error_horizontal_scroll_offset = 0;
 
     enable_raw_mode()?;
     execute!(
@@ -87,7 +89,7 @@ pub async fn render_ui(
     )?;
 
     while !should_quit {
-        if crossterm::event::poll(std::time::Duration::from_millis(100))? {
+        if crossterm::event::poll(std::time::Duration::from_millis(50))? {
             if let crossterm::event::Event::Key(key_event) = crossterm::event::read()? {
                 match key_event.code {
                     crossterm::event::KeyCode::Char('q') => {
@@ -97,9 +99,21 @@ pub async fn render_ui(
                         if scroll_offset > 0 {
                             scroll_offset -= 1;
                         }
+                        if error_scroll_offset > 0 {
+                            error_scroll_offset -= 1;
+                        }
                     }
                     crossterm::event::KeyCode::Down => {
                         scroll_offset += 1;
+                        error_scroll_offset += 1;
+                    }
+                    crossterm::event::KeyCode::Left => {
+                        if error_horizontal_scroll_offset > 0 {
+                            error_horizontal_scroll_offset -= 1;
+                        }
+                    }
+                    crossterm::event::KeyCode::Right => {
+                        error_horizontal_scroll_offset += 1;
                     }
                     _ => {}
                 }
@@ -148,7 +162,11 @@ pub async fn render_ui(
                     })
                     .collect();
                 let errors_paragraph = Paragraph::new(errors_text)
-                    .block(Block::default().borders(Borders::ALL).title("Errors"));
+                    .block(Block::default().borders(Borders::ALL).title("Errors"))
+                    .scroll((
+                        error_scroll_offset as u16,
+                        error_horizontal_scroll_offset as u16,
+                    ));
                 f.render_widget(errors_paragraph, chunks[0]);
             }
 

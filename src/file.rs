@@ -3,6 +3,8 @@ use tokio::fs::{File, OpenOptions};
 
 const CLI_DIR: &str = ".config/jwekke-ai-cli";
 const CONFIG_FILE_NAME: &str = "config.jwek";
+const STREAM_LOG_FILE_PATH: &str = "stream.log";
+const ERROR_LOG_FILE_PATH: &str = "error.log";
 
 pub fn get_cli_config_dir() -> PathBuf {
     let home_dir = dirs::home_dir().expect("Failed to get home directory");
@@ -53,6 +55,16 @@ pub fn get_config_file_path() -> PathBuf {
     dir_path.join(CONFIG_FILE_NAME)
 }
 
+pub fn get_error_log_file_path() -> PathBuf {
+    let dir_path = get_cli_config_dir();
+    dir_path.join(ERROR_LOG_FILE_PATH)
+}
+
+pub fn get_stream_log_file_path() -> PathBuf {
+    let dir_path = get_cli_config_dir();
+    dir_path.join(STREAM_LOG_FILE_PATH)
+}
+
 pub async fn open_config_file() -> (PathBuf, File) {
     let config_file_path = get_config_file_path();
 
@@ -61,6 +73,22 @@ pub async fn open_config_file() -> (PathBuf, File) {
         Err(e) => {
             panic!("Failed to open config file: {}", e);
         }
+    }
+}
+
+pub async fn create_stream_log_file() -> (PathBuf, File) {
+    let stream_log_file_path = get_stream_log_file_path();
+    match create_file(stream_log_file_path, true).await {
+        Ok(file) => file,
+        Err(e) => panic!("Failed to create log file: {}", e),
+    }
+}
+
+pub async fn create_error_log_file() -> (PathBuf, File) {
+    let error_log_file_path = get_error_log_file_path();
+    match create_file(error_log_file_path, true).await {
+        Ok(file) => file,
+        Err(e) => panic!("Failed to create log file: {}", e),
     }
 }
 

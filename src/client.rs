@@ -2,7 +2,6 @@ use crate::models::{MistralModelCard, MistralModelResponse};
 use crate::{config, logger::Logger, stream};
 use reqwest::Client;
 use std::env;
-
 use tokio::sync::mpsc;
 
 const API_URL: &'static str = "https://api.mistral.ai/v1/chat/completions";
