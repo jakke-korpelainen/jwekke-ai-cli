@@ -6,7 +6,7 @@ use std::env;
 use tokio::sync::mpsc;
 
 const API_URL: &'static str = "https://api.mistral.ai/v1/chat/completions";
-const DEFAULT_API_MODEL: &'static str = "mistral-tiny";
+pub const DEFAULT_API_MODEL: &'static str = "mistral-tiny";
 
 pub async fn list_mistral_models(
     logger: &Logger,

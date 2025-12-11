@@ -7,6 +7,9 @@ Supports model selection and streaming output. Uses [ratatui](https://ratatui.rs
 ![Configuration](assets/tui-config.png)
 ![Prompt](assets/tui-prompt.png)
 
+Has crude conditional error collection through logger
+![Prompt](assets/tui-errors.png)
+
 ## Development
 
 set `MISTRAL_API_KEY` into environment variables

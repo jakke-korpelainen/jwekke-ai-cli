@@ -1,3 +1,4 @@
+use crate::client::DEFAULT_API_MODEL;
 use crate::file;
 use tokio::{fs::read_to_string, io::AsyncWriteExt};
 
@@ -14,15 +15,17 @@ pub async fn get_model_name() -> Result<String, Box<dyn std::error::Error>> {
         .map(|line| line[1].to_string())
         .collect::<Vec<String>>();
 
+    if model_config.len() == 0 {
+        return Ok(DEFAULT_API_MODEL.to_string());
+    }
+
     let model_name = model_config[0].clone();
     let stripped_model_name = model_name.replace("\"", "");
     Ok(stripped_model_name)
 }
 
 pub async fn save_model_name(model_name: String) -> Result<(), Box<dyn std::error::Error>> {
-    let (_, mut file) = file::create_config_file().await;
-
-    _ = file.flush().await; // this is for nouw our only config
+    let (_, mut file) = file::create_config_file(Some(true)).await;
     file.write_all(format!("MISTRAL_MODEL=\"{}\"", model_name).as_bytes())
         .await?;
 

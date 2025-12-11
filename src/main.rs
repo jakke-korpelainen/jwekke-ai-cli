@@ -4,7 +4,6 @@ use clap::{Parser, Subcommand};
 pub mod client;
 pub mod config;
 pub mod file;
-pub mod loading;
 pub mod logger;
 pub mod models;
 pub mod stream;
@@ -44,6 +43,7 @@ async fn main() {
             }
         },
         Commands::Run { prompt } => {
+            file::create_config_file(Some(false)).await;
             let escaped_prompt = prompt.replace("\"", "");
             let model_name = match config::get_model_name().await {
                 Ok(model_name) => model_name,

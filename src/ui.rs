@@ -76,13 +76,11 @@ pub async fn render_ui(
     prompt: String,
     mut token_receiver: mpsc::Receiver<String>,
 ) -> io::Result<()> {
-    let errors = logger.get_errors().await;
     let mut token_stream = String::new();
     let mut should_quit = false;
     let mut scroll_offset = 0;
 
     enable_raw_mode()?;
-
     execute!(
         io::stdout(),
         crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
@@ -113,7 +111,11 @@ pub async fn render_ui(
             token_stream.push_str(&token);
         }
 
-        terminal.draw(|f| {
+        terminal.draw(|f: &mut ratatui::Frame| {
+            let errors = tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(logger.get_errors())
+            });
+
             let size = f.size();
             let constraints: Vec<Constraint> = if errors.is_empty() {
                 vec![
